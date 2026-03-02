@@ -69,7 +69,8 @@ async def generate_search_queries():
     CRITICAL FOCUS:
     - Prioritize opportunities in **Hyderabad** and **Bangalore**.
     - Include major tech companies (Google, Microsoft, Amazon).
-    - Exclude courses, trainings, and exams.
+    - Exclude courses, trainings, aggregators, and exams.
+    - Use smart operators like: site:jobs.lever.co or site:boards.greenhouse.io
     
     Return ONLY a JSON array of strings. Example: ["query 1", "query 2"]
     """
@@ -117,10 +118,15 @@ async def analyze_opportunity(markdown_content, url):
        - If it is for {current_year - 2} or {current_year - 1}: Set "is_relevant": false.
     2. Dates: Look closely for DATES (Deadline, Last Date, Apply By). 
        - If exact date is not found, look for "End of [Month]" or "Rolling".
+    3. SCAM & AGGREGATOR FILTERS (Reject these, set "is_relevant": false):
+       - Reject "Pay-to-work" bootcamps disguised as internships.
+       - Reject SEO spam articles (e.g., "Top 10 internships in India" or "Apply now for 500+ jobs") - we only want the direct application page or official organization page.
+       - If the page mentions an application fee: Set "is_relevant": false.
+       - Reject news articles discussing opportunities rather than offering them.
     
     Output JSON ONLY:
     {{
-        "is_relevant": boolean, // True ONLY if for {current_year}/{next_year} AND relevant for students. False for {current_year - 1}/{current_year - 2}, courses, exams, or garbage.
+        "is_relevant": boolean, // True ONLY if for {current_year}/{next_year} AND relevant for students AND NOT spam/fee-based. False otherwise.
         "name": "string", // Clean title, e.g., "Google STEP Intern" or "IASc Summer Fellowship"
         "company_org": "string", // e.g., "Google", "Indian Academy of Sciences", "LFX"
         "location": "string", // Specific City (e.g., "Hyderabad", "Bangalore") or "Remote" or "Pan India". default "India"
@@ -149,6 +155,13 @@ async def analyze_opportunity(markdown_content, url):
 async def discover_links(queries):
     """Searches using Serper and returns unique links."""
     links = set()
+    bad_domains = [
+        'linkedin.com', 'naukri.com', 'indeed.com', 'glassdoor.co.in', 
+        'internshala.com', 'unstop.com', 'cuvette.tech', 'scholarshipsinindia.com',
+        'quora.com', 'reddit.com', 'medium.com', 'youtube.com', 'facebook.com',
+        'instagram.com', 'glassdoor.com', 'geeksforgeeks.org', 'ycombinator.com/companies/'
+    ]
+    
     async with httpx.AsyncClient() as client:
         for query in queries:
             print(f"🔎 Searching: {query}")
@@ -160,7 +173,7 @@ async def discover_links(queries):
                 for r in results:
                     link = r.get('link')
                     # Basic filters
-                    if link and not any(x in link for x in ['linkedin.com', 'naukri.com', 'indeed.com', 'glassdoor.co.in']):
+                    if link and not any(bad in link for bad in bad_domains):
                          links.add(link)
             except Exception as e:
                 print(f"⚠️ Search Error: {e}")
@@ -178,8 +191,17 @@ async def process_link(crawler, run_cfg, link, semaphore):
                 # We removed get_domain_score to rely more on AI, so just check density.
                 link_density = result.markdown.count('](') 
                 
-                if link_density > 250: 
-                    # print(f"🗑️ Skipping likely link farm: {link}")
+                # Check link-to-text ratio (if it's mostly just a giant list of links)
+                text_len = len(result.markdown)
+                if link_density > 200 or (link_density > 50 and text_len < 2000): 
+                    # print(f"🗑️ Skipping likely link farm/index page: {link}")
+                    return
+                
+                # Quick Keyword Check before AI (Saves AI parsing cost if obviously junk)
+                target_words = ['apply', 'deadline', 'eligibility', 'stipend', 'internship', 'fellowship', 'students', 'research', 'open source', 'mentorship', 'summer', 'winter', 'program']
+                text_lower = result.markdown.lower()
+                if not any(word in text_lower for word in target_words):
+                    # print(f"🗑️ Skipping contextless page: {link}")
                     return
 
                 analysis = await analyze_opportunity(result.markdown, link)
