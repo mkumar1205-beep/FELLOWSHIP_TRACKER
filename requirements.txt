@@ -2,7 +2,8 @@ fastapi
 motor
 dnspython
 python-dotenv
-google-generativeai
+google-genai
 pydantic
 crawl4ai
 uvicorn
+httpx
