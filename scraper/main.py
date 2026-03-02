@@ -1,256 +1,356 @@
-import os
-from motor.motor_asyncio import AsyncIOMotorClient
-from pathlib import Path
-import random
-import asyncio
+"""
+AI-Powered Fellowship & Internship Scraper
+==========================================
+"""
+
 import os
 import re
-import httpx
-from urllib.parse import urljoin
-from dotenv import load_dotenv
-from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode
-from datetime import datetime
+import json
+import asyncio
+import time
+from pathlib import Path
+from datetime import datetime, timezone
 
+import httpx
+from motor.motor_asyncio import AsyncIOMotorClient
+from dotenv import load_dotenv
+from crawl4ai import AsyncWebCrawler, CrawlerRunConfig, CacheMode
+from google import genai
+from google.genai import types
+
+# ─────────────────────────── ENV SETUP ───────────────────────────
 env_path = Path(__file__).parent.parent / '.env'
 load_dotenv(dotenv_path=env_path)
 
-client = AsyncIOMotorClient(os.getenv("MONGO_URL"))
-db = client.fellowship_tracker
-collection = db.fellowships
+MONGO_URL  = os.getenv("MONGO_URL")
 SERPER_KEY = os.getenv("SERPER_API_KEY")
+GEMINI_KEY = os.getenv("GEMINI_API_KEY")
 
+mongo_client = AsyncIOMotorClient(MONGO_URL, serverSelectionTimeoutMS=5000)
+db           = mongo_client.fellowship_tracker
+collection   = db.fellowships
 
-SEARCH_QUERIES = [
-    "site:gov.in tech fellowship 2026 application",
-    "site:edu.in software engineering internship summer 2026",
-    "MeitY digital india internship 2026 registration",
-    "ISRO IIRS internship for students 2026",
-    "IIT research internship 2026 computer science",
-    "software developer internship india 2026 apply",
-    "AI ML fellowship for indian students 2026",
-    "Google India STEP internship 2026 deadline",
-    "Microsoft India university internship 2026",
-    "Qualcomm India technical internship 2026",
-    'site:*.gov.in "internship" OR "fellowship" 2026 -site:instagram.com -site:facebook.com',
-    'site:meity.gov.in "internship" 2026',
-    'site:dst.gov.in "fellowship" 2026',
-    'site:isro.gov.in "student project" OR "internship" 2026',
-    'site:*.ac.in OR site:*.edu.in "summer internship" 2026 computer science',
-    'site:iit*.ac.in "research internship" 2026',
-    'site:google.com/about/careers "Software Engineering Intern" India 2026',
-    'site:amazon.jobs "SDE Intern" India 2026',
-    '"CS engineering internship" India 2026 -site:instagram.com -site:linkedin.com -site:twitter.com',
-    "site:*.gov.in internship", 
-    "site:*.res.in fellowship", 
-    "site:nic.in recruitment 2026", 
-    "CS student internship India 2026",
-    "site:dic.gov.in Technical Internship 2026",
-    "site:negd.gov.in Technical Internship 2026",
-    "site:bharatdigital.io fellowship 2026",
-    "site:spark.iitr.ac.in 2026",
-    "site:intern.meity.gov.in 2026",
-    "site:internship.aicte-india.org 2026",
-    "site:skillindiadigital.gov.in internship 2026",
-    "site:wcd.intern.nic.in 2026",
-    "site:fellowship.tribal.gov.in 2026",
-    "site:ashoka.edu.in Young India Fellowship 2026",
-    "site:isve.in Summer Internship 2026",
-    "site:sionsemi.com internship 2026",
-    "site:sun.iitpkd.ac.in 2026",
-    "site:surge.iitk.ac.in 2025 2026",
-    "site:eapplication.nitrkl.ac.in 2026",
-    "intitle:\"Internship\" site:gov.in 2026",
-    "intitle:\"Fellowship\" site:gov.in 2026",
-    "site:*.res.in \"Internship\" 2026",
-    "site:*.nic.in recruitment 2026 intern",
-    "site:*.ac.in \"Summer Research\" 2026 stipend"
+gemini_client = genai.Client(api_key=GEMINI_KEY)
+
+# ── CONFIRMED WORKING MODEL from your list() output ──────────────
+GEMINI_MODEL = "models/gemini-2.5-flash"
+
+STUDENT_PROFILE = {
+    "location": "Bangalore, Karnataka, India",
+    "education": "B.Tech / B.E. (undergraduate) or M.Tech (postgraduate)",
+    "domains": ["computer science", "software engineering", "AI/ML", "open source", "research"],
+    "year": "2025-2026 cycle",
+}
+
+MUST_HAVE_PROGRAMS = [
+    "LFX Mentorship (Linux Foundation)",
+    "GSoC - Google Summer of Code",
+    "DWoC - Delta Winter of Code",
+    "KWoC - Kharagpur Winter of Code",
+    "CNCF Mentorship Program",
+    "Summer of Bitcoin",
+    "FOSS United Fellowship",
+    "Reliance Foundation Undergraduate Scholarship",
+    "Grace Hopper Celebration (GHC) Scholarship",
+    "LIFT Fellowship",
+    "IIT Research Internship (SURGE / SPARK / SRF)",
+    "SRFP - JNCASR Summer Research Fellowship",
+    "SRIP - IIT Gandhinagar Summer Research Internship",
+    "MSR - Microsoft Research India Fellowship",
 ]
 
-USER_AGENTS = [
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Firefox/110.0"
-]
+BLACKLISTED_DOMAINS = {
+    "instagram.com", "facebook.com", "twitter.com", "x.com",
+    "linkedin.com", "youtube.com", "pinterest.com", "reddit.com",
+    "quora.com", "medium.com", "t.co", "bit.ly",
+}
 
-def get_domain_score(url):
-    """Prioritizes official government, academic, and a refined list of top-tier global tech portals."""
-    url = url.lower()
-    
-    if any(ext in url for ext in ['.gov.in', '.nic.in', '.res.in']): return 100
-    if any(ext in url for ext in ['.ac.in', '.edu.in']): return 95
-    
-    trusted_brands = [
-        'google', 'microsoft', 'amazon', 'apple', 'meta', 'adobe', 'salesforce', 
-        'servicenow', 'oracle', 'sap.com', 'ibm.com', 'redhat', 'atlassian',
-        'qualcomm', 'amd.com', 'nvidia', 'intel', 'samsung', 'analog.com', 
-        'nxp.com', 'arm.com', 'broadcom', 'mediatek', 'ti.com', 'vlsi',
-        'tcs.com', 'infosys', 'wipro', 'hcltech', 'techmahindra', 'ltimindtree', 
-        'cognizant', 'capgemini', 'accenture', 'mphasis',
-        'paytm', 'phonepe', 'razorpay', 'zerodha', 'upstox', 'slice', 'groww', 
-        'paypal', 'stripe', 'visa.com', 'mastercard', 'goldmansachs', 'jpmorgan',
-        'deloitte', 'ey.com', 'pwc', 'kpmg', 'mckinsey', 'bcg.com', 'bain.com',
-        'intel', 'nxp', 'ti.com', 'samsung', 'cisco', 'mediatek', 'jio.com', 
-        'tata.com', 'reliance', 'cred.club', 'zomato', 'swiggy', 'groww', 
-        'serb.gov.in', 'aicte-india.org', 'niti.gov.in', 'mea.gov.in'
-    ]
-    
-    if any(brand in url for brand in trusted_brands):
-        return 85 
+# ─────────────────────────── GEMINI WRAPPER ──────────────────────
 
-    if any(d in url for d in ['instagram.com', 'facebook.com', 'linkedin.com', 'youtube.com']): 
-        return 0
-        
+def ask_gemini(prompt: str, max_tokens: int = 2048) -> str:
+    time.sleep(35)  # 35s gap = ~1.7 RPM, safe for 2 RPM free tier
+    for attempt in range(4):
+        try:
+            resp = gemini_client.models.generate_content(
+                model=GEMINI_MODEL,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    temperature=0.2,
+                    max_output_tokens=max_tokens,
+                ),
+            )
+            return resp.text.strip() if resp.text else ""
+        except Exception as e:
+            err = str(e)
+            if "429" in err or "RESOURCE_EXHAUSTED" in err:
+                wait = (2 ** attempt) * 30
+                print(f"  ⏳ Rate limited. Waiting {wait}s (attempt {attempt+1}/4)...")
+                time.sleep(wait)
+            else:
+                print(f"  ❌ Gemini error: {err[:300]}")
+                return ""
+    return ""
+
+
+def safe_parse_json(raw: str):
+    try:
+        cleaned = re.sub(r"```json|```", "", raw).strip()
+        match = re.search(r'(\{.*\}|\[.*\])', cleaned, re.DOTALL)
+        if match:
+            return json.loads(match.group())
+    except Exception:
+        pass
+    return None
+
+
+# ─────────────────────────── DOMAIN SCORING ──────────────────────
+
+def get_domain_score(url: str) -> int:
+    u = url.lower()
+    if any(d in u for d in BLACKLISTED_DOMAINS): return 0
+    if any(e in u for e in [".gov.in", ".nic.in", ".res.in"]): return 100
+    if any(e in u for e in [".ac.in", ".edu.in"]): return 95
+    tier2 = ["lfx.linuxfoundation.org", "summerofcode.withgoogle.com",
+             "cncf.io", "summerofbitcoin.org", "fossunited.org",
+             "jncasr.ac.in", "iitgn.ac.in", "ghc.anitab.org"]
+    if any(t in u for t in tier2): return 98
+    if any(a in u for a in ["internshala", "unstop", "naukri", "glassdoor", "indeed"]): return 30
     return 50
 
 
+def is_link_allowed(url: str) -> bool:
+    u = url.lower()
+    if any(d in u for d in BLACKLISTED_DOMAINS): return False
+    if u.endswith((".pdf", ".doc", ".docx", ".zip")): return False
+    return True
 
-def clean_name(markdown, metadata_title):
-    name = metadata_title.split('|')[0].split('-')[0].split('–')[0].split(':')[0].strip()
-    
-    circular_keywords = ['circular', 'notice', 'advertisement', 'office order', 'notification']
-    if any(word in name.lower() for word in circular_keywords) or len(name) < 8:
-        h1_match = re.search(r'^#\s+(.*)', markdown, re.MULTILINE)
-        if h1_match:
-            name = h1_match.group(1).strip()
-    garbage = [
-        'Apply Now', 'Registration', '2026', '2025', 'Official Website', 
-        'Home', 'Login', 'Details', 'Form', 'Portal', 'Welcome to'
-    ]
-    
-    for word in garbage:
-        name = re.sub(rf'\b{word}\b', '', name, flags=re.IGNORECASE).strip()
-   
-    name = re.sub(r'\s+', ' ', name)
-        
-    return name[:80] if len(name) > 3 else "Technical Opportunity"
-def extract_deadline(text):
-    current_year = datetime.now().year # 2026
-    
-    year_match = re.search(r'202[4-7]', text) 
-    found_year = int(year_match.group(0)) if year_match else None
-    
-    month_pattern = r'(\d{1,2}(?:st|nd|rd|th)?\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*)'
-    match = re.search(month_pattern, text, re.IGNORECASE)
-    
-    if match:
-        date_str = match.group(0).strip()
-        clean_date = re.sub(r'(st|nd|rd|th)', '', date_str, flags=re.IGNORECASE)
-        
-        try:
-            target_year = found_year if found_year else current_year
-            parsed_date = datetime.strptime(f"{clean_date} {target_year}", "%d %b %Y")
-            
-            if not found_year and (datetime.now() - parsed_date).days > 180:
-                return "Likely Expired (Old Date Found)"
-                
-            return parsed_date.strftime("%Y-%m-%d") # Standard Format: 2026-03-31
-        except:
-            pass
 
-    numeric_pattern = r'(\d{1,2}[-/]\d{1,2}[-/]\d{2,4})'
-    num_match = re.search(numeric_pattern, text)
-    if num_match:
-        return num_match.group(0)
-    return "Check Website"
+# ─────────────────────────── STEP 1: QUERY GENERATION ────────────
 
-def is_valid_source(url):
-    """Filters out known social media and low-quality domains."""
-    blacklist = [
-        'instagram.com', 'facebook.com', 'twitter.com', 'linkedin.com', 
-        'youtube.com', 'medium.com', 'pinterest.com'
-    ]
-    
-    url_lower = url.lower()
-    return not any(domain in url_lower for domain in blacklist)
+def generate_queries_with_ai() -> list[dict]:
+    print("\n🤖 Gemini is generating search queries...")
+    programs_list = "\n".join(f"- {p}" for p in MUST_HAVE_PROGRAMS)
 
-async def discover_300_links():
-    """Loops through queries and pages to find a massive link set."""
-    all_links_with_scores = []
-    seen_links = set()
-    async with httpx.AsyncClient() as client:
-        for query in SEARCH_QUERIES:
-            for page in range(1, 4): # Get 3 pages per query for wider reach
-                print(f"🌍 Searching: '{query}' (Page {page})")
-                payload = {"q": query, "gl": "in", "num": 50, "page": page}
-                headers = {'X-API-KEY': SERPER_KEY, 'Content-Type': 'application/json'}
-                try:
-                    resp = await client.post("https://google.serper.dev/search", json=payload, headers=headers)
-                    results = resp.json().get('organic', [])
-                    for r in results:
-                        link = r['link']
-                        
-                        # Apply Point 2: Filter out blacklist and duplicates
-                        if link not in seen_links and is_valid_source(link) and not link.lower().endswith('.pdf'):
-                            context = (r.get('title', '') + r.get('snippet', '')).lower()
-                            keywords = ['intern', 'fellow', 'scholar', 'trainee', 'opportunity']
-                            
-                            if any(k in context for k in keywords):
-                                score = get_domain_score(link) # Use your scoring logic
-                                all_links_with_scores.append((score, link))
-                                seen_links.add(link)
-                    await asyncio.sleep(0.5)
-                except Exception as e: print(f"⚠️ Search Error: {e}")
+    prompt = f"""You are helping find tech fellowships for Indian CS students in Bangalore.
 
-    all_links_with_scores.sort(key=lambda x: x[0], reverse=True)
-    return [item[1] for item in all_links_with_scores]
+For each program below, generate exactly 2 Google search queries:
+1. One targeting the official application page
+2. One targeting 2025 or 2026 deadlines
 
-async def process_link(crawler, run_cfg, link, semaphore):
+Programs:
+{programs_list}
+
+Also suggest 5 additional relevant programs for: {json.dumps(STUDENT_PROFILE)}
+
+Return ONLY this JSON with no extra text or markdown:
+{{
+  "must_have": [
+    {{"name": "Program Name", "queries": ["query 1", "query 2"], "official_domain_hint": "domain.com"}}
+  ],
+  "additional": [
+    {{"name": "Program Name", "queries": ["query 1", "query 2"], "official_domain_hint": "domain.com"}}
+  ]
+}}"""
+
+    raw = ask_gemini(prompt, max_tokens=3000)
+    if not raw:
+        print("  ⚠️  Gemini unavailable, using fallback queries.")
+        return [{"name": p, "queries": [f"{p} 2026 official application", f"{p} deadline 2026"]}
+                for p in MUST_HAVE_PROGRAMS]
+
+    data = safe_parse_json(raw)
+    if not data or not isinstance(data, dict):
+        print("  ⚠️  JSON parse failed, using fallback queries.")
+        return [{"name": p, "queries": [f"{p} 2026 official application", f"{p} deadline 2026"]}
+                for p in MUST_HAVE_PROGRAMS]
+
+    combined = data.get("must_have", []) + data.get("additional", [])
+    print(f"  ✅ Generated queries for {len(combined)} programs.")
+    return combined
+
+
+# ─────────────────────────── STEP 2: SERPER SEARCH ───────────────
+
+async def serper_search(query: str, client: httpx.AsyncClient) -> list[str]:
+    headers = {"X-API-KEY": SERPER_KEY, "Content-Type": "application/json"}
+    try:
+        resp = await client.post(
+            "https://google.serper.dev/search",
+            json={"q": query, "gl": "in", "num": 10},
+            headers=headers, timeout=15,
+        )
+        results = resp.json().get("organic", [])
+        return [
+            r.get("link", "") for r in results
+            if is_link_allowed(r.get("link", "")) and any(
+                k in (r.get("title","") + r.get("snippet","")).lower()
+                for k in ["intern", "fellow", "scholar", "mentorship", "apply", "stipend"]
+            )
+        ]
+    except Exception as e:
+        print(f"  ⚠️  Serper error: {e}")
+        return []
+
+
+async def collect_links(programs: list[dict]) -> list[tuple[int, str]]:
+    seen, scored = set(), []
+    async with httpx.AsyncClient() as http:
+        for prog in programs:
+            print(f"  🔍 Searching: {prog['name']}")
+            for query in prog.get("queries", []):
+                for link in await serper_search(query, http):
+                    if link not in seen:
+                        seen.add(link)
+                        score = get_domain_score(link)
+                        hint = prog.get("official_domain_hint", "")
+                        if hint and hint.lower() in link.lower():
+                            score = min(score + 15, 100)
+                        scored.append((score, link))
+                await asyncio.sleep(1.0)
+    scored.sort(key=lambda x: x[0], reverse=True)
+    print(f"\n  📦 Collected {len(scored)} unique links.\n")
+    return scored
+
+
+# ─────────────────────────── STEP 3: AI RELEVANCE FILTER ─────────
+
+def ai_relevance_check(links: list[str]) -> list[str]:
+    if not links:
+        return []
+    print(f"🤖 Gemini filtering {len(links)} links...")
+    numbered = "\n".join(f"{i+1}. {url}" for i, url in enumerate(links))
+
+    prompt = f"""Filter these URLs for a fellowship tracker for Indian CS students.
+
+KEEP if: official fellowship/internship application or eligibility page.
+SKIP if: social media, news article, blog, job aggregator (Naukri, Internshala, Unstop).
+
+Return ONLY a JSON array of numbers to keep. Example: [1, 3, 5]
+No explanation, no markdown.
+
+URLs:
+{numbered}"""
+
+    raw = ask_gemini(prompt, max_tokens=300)
+    if not raw:
+        return links
+
+    parsed = safe_parse_json(raw)
+    if not isinstance(parsed, list):
+        return links
+
+    kept = [links[i-1] for i in parsed if isinstance(i, int) and 1 <= i <= len(links)]
+    print(f"  ✅ Kept {len(kept)} / {len(links)} links.\n")
+    return kept
+
+
+# ─────────────────────────── STEP 4: EXTRACT + STORE ─────────────
+
+def ai_extract_details(page_text: str, url: str) -> dict:
+    prompt = f"""Extract data from this fellowship webpage.
+
+URL: {url}
+Content: {page_text[:5000]}
+
+Return ONLY this JSON with no markdown:
+{{
+  "name": "Full program name",
+  "organization": "Sponsoring org",
+  "deadline": "YYYY-MM-DD or Check Website or Rolling",
+  "stipend": "Amount or Unpaid or Not Specified",
+  "eligibility": "1-2 sentence summary",
+  "mode": "Remote or In-Person or Hybrid",
+  "is_open": true or false,
+  "tags": ["tag1", "tag2"]
+}}"""
+
+    raw = ask_gemini(prompt, max_tokens=800)
+    if not raw:
+        return {}
+    result = safe_parse_json(raw)
+    return result if isinstance(result, dict) else {}
+
+
+async def process_link(crawler, run_cfg, link: str, score: int, semaphore: asyncio.Semaphore):
     async with semaphore:
         try:
-            if any(ext in link.lower() for ext in ['.gov.in', '.ac.in', '.nic.in']):
-                run_cfg.wait_for = "css:#notice-board, .announcement, #latest-news, .content-area, body"
-                run_cfg.delay_before_return_html = 2.0 
-            else:
-                run_cfg.wait_for = "body"
-            run_cfg.headers = {"User-Agent": random.choice(USER_AGENTS)}
-            result = await asyncio.wait_for(crawler.arun(url=link, config=run_cfg), timeout=60.0)
-            
-            if result.success and len(result.markdown) > 300:
-                score = get_domain_score(link)
-                link_density = result.markdown.count('](') 
-
-            if score < 80 and link_density > 80: # Loosened from 60 to 80
-                print(f"🗑️ Skipping low-trust aggregator: {link}")
+            result = await asyncio.wait_for(
+                crawler.arun(url=link, config=run_cfg), timeout=60.0
+            )
+            if not result.success or len(result.markdown) < 300:
                 return
-                
-            name = clean_name(result.markdown, result.metadata.get ('title', ''))
-            deadline = extract_deadline(result.markdown)
-            await collection.update_one(
-                    {"apply_link": link},
-                    {"$set": {
-                        "name": name, 
-                        "deadline": deadline, 
-                        "apply_link": link,
-                        "trust_score": score,
-                        "last_updated": datetime.now()
-                    }},
-                    upsert=True
-                )
-            print(f"✅ Mongo Synced: {name}")
-        except Exception: pass
+            if score < 80 and result.markdown.count("](") > 80:
+                print(f"  🗑️  Skipping aggregator: {link}")
+                return
+
+            details = ai_extract_details(result.markdown, link)
+            if not details:
+                return
+
+            is_open = details.get("is_open")
+            if isinstance(is_open, str):
+                is_open = is_open.lower() in ["true", "open", "yes"]
+            else:
+                is_open = bool(is_open)
+
+            doc = {
+                "name":         details.get("name") or "Unknown Opportunity",
+                "organization": details.get("organization"),
+                "deadline":     details.get("deadline", "Check Website"),
+                "stipend":      details.get("stipend"),
+                "eligibility":  details.get("eligibility"),
+                "mode":         details.get("mode"),
+                "is_open":      is_open,
+                "tags":         details.get("tags", []),
+                "apply_link":   link,
+                "trust_score":  score,
+                "last_updated": datetime.now(timezone.utc),
+            }
+            await collection.update_one({"apply_link": link}, {"$set": doc}, upsert=True)
+            print(f"  ✅ Saved: {doc['name']}  |  Deadline: {doc['deadline']}")
+
+        except asyncio.TimeoutError:
+            print(f"  ⏱️  Timeout: {link}")
+        except Exception as e:
+            print(f"  ❌ Error ({link}): {e}")
+
+
+# ─────────────────────────── MAIN ────────────────────────────────
 
 async def main():
-    links = await discover_300_links()
-    if not links: return
-    semaphore = asyncio.Semaphore(3)
+    print("=" * 60)
+    print("  FELLOWSHIP TRACKER — AI MODE")
+    print(f"  Model: {GEMINI_MODEL}")
+    print("=" * 60)
 
-    # Browser config to block heavy assets and prevent "Sticking"
-    browser_cfg = BrowserConfig(headless=True, extra_args=["--disable-gpu", "--no-sandbox"])
-    run_cfg = CrawlerRunConfig(
-    cache_mode=CacheMode.BYPASS,
-    exclude_all_images=True, 
-    page_timeout=60000,   
-    wait_for="body",      
-    delay_before_return_html=2.0 
+    programs     = generate_queries_with_ai()
+    print("\n📡 Running web searches...\n")
+    scored_links = await collect_links(programs)
+
+    if not scored_links:
+        print("❌ No links found. Check SERPER_API_KEY in .env")
+        return
+
+    top_urls   = [url for _, url in scored_links[:40]]
+    final_urls = ai_relevance_check(top_urls)
+    score_map  = {url: sc for sc, url in scored_links}
+
+    print(f"\n🚀 Crawling {len(final_urls)} pages...\n")
+    semaphore = asyncio.Semaphore(1)
+    run_cfg   = CrawlerRunConfig(
+        cache_mode=CacheMode.BYPASS,
+        exclude_all_images=True,
+        page_timeout=60000,
+        wait_for="body",
+        delay_before_return_html=2.0,
     )
 
-    async with AsyncWebCrawler(config=browser_cfg) as crawler:
-        print(f"🚀 Processing {len(links)} links in parallel...")
+    async with AsyncWebCrawler() as crawler:
+        for url in final_urls:
+            await process_link(crawler, run_cfg, url, score_map.get(url, 50), semaphore)
 
-        tasks = [process_link(crawler, run_cfg, link, semaphore) for link in links]
+    print("\n🎉 Done! Database updated.")
 
-        await asyncio.gather(*tasks)
-        print("🎉 Database sync complete.")
 
 if __name__ == "__main__":
     asyncio.run(main())

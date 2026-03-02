@@ -1,0 +1,7 @@
+crawl4ai
+playwright
+google-genai
+httpx
+python-dotenv
+motor
+dnspython
