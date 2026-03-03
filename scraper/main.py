@@ -10,6 +10,7 @@ from urllib.parse import urljoin
 from dotenv import load_dotenv
 from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode
 from datetime import datetime
+from scraper.discord import send_discord_notification
 
 env_path = Path(__file__).parent.parent / '.env'
 load_dotenv(dotenv_path=env_path)
@@ -170,7 +171,7 @@ async def discover_300_links():
     async with httpx.AsyncClient() as client:
         for query in SEARCH_QUERIES:
             for page in range(1, 4): # Get 3 pages per query for wider reach
-                print(f"🌍 Searching: '{query}' (Page {page})")
+                print(f"Searching: '{query}' (Page {page})")
                 payload = {"q": query, "gl": "in", "num": 50, "page": page}
                 headers = {'X-API-KEY': SERPER_KEY, 'Content-Type': 'application/json'}
                 try:
@@ -189,45 +190,72 @@ async def discover_300_links():
                                 all_links_with_scores.append((score, link))
                                 seen_links.add(link)
                     await asyncio.sleep(0.5)
-                except Exception as e: print(f"⚠️ Search Error: {e}")
+                except Exception as e: print(f"Search Error: {e}")
 
     all_links_with_scores.sort(key=lambda x: x[0], reverse=True)
     return [item[1] for item in all_links_with_scores]
 
-async def process_link(crawler, run_cfg, link, semaphore):
+async def process_link(crawler, link, semaphore):
     async with semaphore:
         try:
-            if any(ext in link.lower() for ext in ['.gov.in', '.ac.in', '.nic.in']):
-                run_cfg.wait_for = "css:#notice-board, .announcement, #latest-news, .content-area, body"
-                run_cfg.delay_before_return_html = 2.0 
-            else:
-                run_cfg.wait_for = "body"
-            run_cfg.headers = {"User-Agent": random.choice(USER_AGENTS)}
-            result = await asyncio.wait_for(crawler.arun(url=link, config=run_cfg), timeout=60.0)
-            
-            if result.success and len(result.markdown) > 300:
-                score = get_domain_score(link)
-                link_density = result.markdown.count('](') 
+            is_official = any(ext in link.lower() for ext in ['.gov.in', '.ac.in', '.nic.in'])
+            run_cfg = CrawlerRunConfig(
+                cache_mode=CacheMode.BYPASS,
+                exclude_all_images=True,
+                page_timeout=60000,
+                wait_for="css:#notice-board, .announcement, #latest-news, .content-area, body" if is_official else "body",
+                delay_before_return_html=2.0,
+                headers={"User-Agent": random.choice(USER_AGENTS)}
+            )
 
-            if score < 80 and link_density > 80: # Loosened from 60 to 80
-                print(f"🗑️ Skipping low-trust aggregator: {link}")
+            result = await asyncio.wait_for(
+                crawler.arun(url=link, config=run_cfg),
+                timeout=60.0
+            )
+
+            # Validate crawl result
+            if not result.success:
                 return
-                
-            name = clean_name(result.markdown, result.metadata.get ('title', ''))
+
+            if len(result.markdown) <= 300:
+                return
+
+            score = get_domain_score(link)
+            link_density = result.markdown.count('](')
+
+            # Skip low trust aggregators
+            if score < 80 and link_density > 80:
+                print(f"Skipping low-trust aggregator: {link}")
+                return
+
+            # Extract data
+            name = clean_name(result.markdown, result.metadata.get('title', ''))
             deadline = extract_deadline(result.markdown)
-            await collection.update_one(
+
+            doc = {
+                "name": name,
+                "deadline": deadline,
+                "apply_link": link,
+                "trust_score": score,
+                "last_updated": datetime.now()
+            }
+
+            # Check if exists
+            existing = await collection.find_one({"apply_link": link})
+
+            if not existing:
+                await collection.insert_one(doc)
+                print(f"New Added: {name}")
+                await send_discord_notification(doc)
+            else:
+                await collection.update_one(
                     {"apply_link": link},
-                    {"$set": {
-                        "name": name, 
-                        "deadline": deadline, 
-                        "apply_link": link,
-                        "trust_score": score,
-                        "last_updated": datetime.now()
-                    }},
-                    upsert=True
+                    {"$set": doc}
                 )
-            print(f"✅ Mongo Synced: {name}")
-        except Exception: pass
+                print(f"Updated: {name}")
+
+        except Exception as e:
+            print(f"Error processing {link}: {e}")
 
 async def main():
     links = await discover_300_links()
@@ -236,21 +264,14 @@ async def main():
 
     # Browser config to block heavy assets and prevent "Sticking"
     browser_cfg = BrowserConfig(headless=True, extra_args=["--disable-gpu", "--no-sandbox"])
-    run_cfg = CrawlerRunConfig(
-    cache_mode=CacheMode.BYPASS,
-    exclude_all_images=True, 
-    page_timeout=60000,   
-    wait_for="body",      
-    delay_before_return_html=2.0 
-    )
 
     async with AsyncWebCrawler(config=browser_cfg) as crawler:
-        print(f"🚀 Processing {len(links)} links in parallel...")
+        print(f"Processing {len(links)} links in parallel...")
 
-        tasks = [process_link(crawler, run_cfg, link, semaphore) for link in links]
+        tasks = [process_link(crawler, link, semaphore) for link in links]
 
         await asyncio.gather(*tasks)
-        print("🎉 Database sync complete.")
+        print("Database sync complete.")
 
 if __name__ == "__main__":
     asyncio.run(main())
