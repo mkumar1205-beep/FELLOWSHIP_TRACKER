@@ -15,8 +15,7 @@ import httpx
 from motor.motor_asyncio import AsyncIOMotorClient
 from dotenv import load_dotenv
 from crawl4ai import AsyncWebCrawler, CrawlerRunConfig, CacheMode
-from google import genai
-from google.genai import types
+from groq import Groq
 
 # ─────────────────────────── ENV SETUP ───────────────────────────
 env_path = Path(__file__).parent.parent / '.env'
@@ -24,16 +23,16 @@ load_dotenv(dotenv_path=env_path)
 
 MONGO_URL  = os.getenv("MONGO_URL")
 SERPER_KEY = os.getenv("SERPER_API_KEY")
-GEMINI_KEY = os.getenv("GEMINI_API_KEY")
+GROQ_KEY    = os.getenv("GROQ_API_KEY")
 
 mongo_client = AsyncIOMotorClient(MONGO_URL, serverSelectionTimeoutMS=5000)
 db           = mongo_client.fellowship_tracker
 collection   = db.fellowships
 
-gemini_client = genai.Client(api_key=GEMINI_KEY)
+groq_client = Groq(api_key=GROQ_KEY)
 
 # ── CONFIRMED WORKING MODEL from your list() output ──────────────
-GEMINI_MODEL = "models/gemini-2.5-flash"
+GROQ_MODEL  = "llama-3.3-70b-versatile"
 
 STUDENT_PROFILE = {
     "location": "Bangalore, Karnataka, India",
@@ -68,26 +67,24 @@ BLACKLISTED_DOMAINS = {
 # ─────────────────────────── GEMINI WRAPPER ──────────────────────
 
 def ask_gemini(prompt: str, max_tokens: int = 2048) -> str:
-    time.sleep(35)  # 35s gap = ~1.7 RPM, safe for 2 RPM free tier
+    """Call Groq — fast free tier, no aggressive sleep needed."""
     for attempt in range(4):
         try:
-            resp = gemini_client.models.generate_content(
-                model=GEMINI_MODEL,
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    temperature=0.2,
-                    max_output_tokens=max_tokens,
-                ),
+            resp = groq_client.chat.completions.create(
+                model=GROQ_MODEL,
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=max_tokens,
+                temperature=0.2,
             )
-            return resp.text.strip() if resp.text else ""
+            return resp.choices[0].message.content.strip()
         except Exception as e:
             err = str(e)
-            if "429" in err or "RESOURCE_EXHAUSTED" in err:
-                wait = (2 ** attempt) * 30
-                print(f"  ⏳ Rate limited. Waiting {wait}s (attempt {attempt+1}/4)...")
+            if "429" in err or "rate_limit" in err.lower():
+                wait = (2 ** attempt) * 5  # 5, 10, 20, 40s — much shorter than Gemini
+                print(f"  ⏳ Rate limited. Waiting {wait}s...")
                 time.sleep(wait)
             else:
-                print(f"  ❌ Gemini error: {err[:300]}")
+                print(f"  ❌ Groq error: {err[:300]}")
                 return ""
     return ""
 
@@ -320,7 +317,7 @@ async def process_link(crawler, run_cfg, link: str, score: int, semaphore: async
 async def main():
     print("=" * 60)
     print("  FELLOWSHIP TRACKER — AI MODE")
-    print(f"  Model: {GEMINI_MODEL}")
+    print(f"  Model: {GROQ_MODEL}")
     print("=" * 60)
 
     programs     = generate_queries_with_ai()
@@ -336,7 +333,7 @@ async def main():
     score_map  = {url: sc for sc, url in scored_links}
 
     print(f"\n🚀 Crawling {len(final_urls)} pages...\n")
-    semaphore = asyncio.Semaphore(1)
+    semaphore = asyncio.Semaphore(3)
     run_cfg   = CrawlerRunConfig(
         cache_mode=CacheMode.BYPASS,
         exclude_all_images=True,

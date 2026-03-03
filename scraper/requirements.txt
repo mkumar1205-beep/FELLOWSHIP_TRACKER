@@ -1,6 +1,6 @@
 crawl4ai
 playwright
-google-genai
+groq
 httpx
 python-dotenv
 motor
