@@ -1,0 +1,7 @@
+crawl4ai
+playwright
+groq
+httpx
+python-dotenv
+motor
+dnspython

@@ -1,0 +1,186 @@
+2026-03-03T23:32:51 | INFO     | ============================================================
+2026-03-03T23:32:51 | INFO     | FELLOWSHIP TRACKER — Production Scraper
+2026-03-03T23:32:51 | INFO     | Model : llama-3.3-70b-versatile
+2026-03-03T23:32:51 | INFO     | Target: BLR / HYD / India / Remote / Abroad — CS students
+2026-03-03T23:32:51 | INFO     | ============================================================
+2026-03-03T23:32:52 | INFO     | MongoDB: unique index on apply_link confirmed
+2026-03-03T23:32:52 | INFO     | Step 1: Generating search queries with AI...
+2026-03-03T23:32:55 | INFO     | HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-03T23:32:55 | INFO     | Generated queries for 29 programs (19 must-have + 10 additional)
+2026-03-03T23:32:55 | INFO     | Step 2: Running web searches...
+2026-03-03T23:32:55 | INFO     | Searching: LFX Mentorship (Linux Foundation)
+2026-03-03T23:32:56 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:32:58 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:33:00 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:33:00 | INFO     | Searching: GSoC - Google Summer of Code
+2026-03-03T23:33:01 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:33:03 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:33:05 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:33:06 | INFO     | Searching: DWoC - Delta Winter of Code
+2026-03-03T23:33:07 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:33:08 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:33:10 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:33:10 | INFO     | Searching: KWoC - Kharagpur Winter of Code
+2026-03-03T23:33:11 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:33:12 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:33:14 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:33:14 | INFO     | Searching: CNCF Mentorship Program
+2026-03-03T23:33:15 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:33:16 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:33:17 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:33:18 | INFO     | Searching: Summer of Bitcoin
+2026-03-03T23:33:19 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:33:20 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:33:21 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:33:22 | INFO     | Searching: FOSS United Fellowship
+2026-03-03T23:33:23 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:33:25 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:33:27 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:33:27 | INFO     | Searching: Reliance Foundation Undergraduate Scholarship
+2026-03-03T23:33:28 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:33:29 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:33:32 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:33:32 | INFO     | Searching: Grace Hopper Celebration (GHC) Scholarship
+2026-03-03T23:33:33 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:33:35 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:33:36 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:33:37 | INFO     | Searching: LIFT Fellowship
+2026-03-03T23:33:38 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:33:39 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:33:41 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:33:41 | INFO     | Searching: IIT Research Internship (SURGE / SPARK / SRF)
+2026-03-03T23:33:42 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:33:44 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:33:46 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:33:47 | INFO     | Searching: SRFP - JNCASR Summer Research Fellowship
+2026-03-03T23:33:48 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:33:49 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:33:50 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:33:51 | INFO     | Searching: SRIP - IIT Gandhinagar Summer Research Internship
+2026-03-03T23:33:53 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:33:54 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:33:56 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:33:56 | INFO     | Searching: MSR - Microsoft Research India Fellowship
+2026-03-03T23:33:57 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:34:00 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:34:01 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:34:02 | INFO     | Searching: Outreachy
+2026-03-03T23:34:03 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:34:04 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:34:05 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:34:06 | INFO     | Searching: MLH Fellowship
+2026-03-03T23:34:07 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:34:08 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:34:09 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:34:10 | INFO     | Searching: Google STEP Internship India
+2026-03-03T23:34:10 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:34:13 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:34:14 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:34:15 | INFO     | Searching: Adobe India Research Internship
+2026-03-03T23:34:16 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:34:18 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:34:19 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:34:20 | INFO     | Searching: Samsung PRISM India
+2026-03-03T23:34:20 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:34:22 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:34:23 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:34:24 | INFO     | Searching: Microsoft AI for Earth Fellowship
+2026-03-03T23:34:24 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:34:26 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:34:27 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:34:28 | INFO     | Searching: Google AI Residency Program
+2026-03-03T23:34:29 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:34:31 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:34:32 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:34:32 | INFO     | Searching: Amazon SDE Internship
+2026-03-03T23:34:33 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:34:35 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:34:36 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:34:37 | INFO     | Searching: IBM Research Internship
+2026-03-03T23:34:38 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:34:39 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:34:41 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:34:41 | INFO     | Searching: Cisco University Research Program
+2026-03-03T23:34:42 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:34:44 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:34:45 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:34:46 | INFO     | Searching: Intel India Research Internship
+2026-03-03T23:34:47 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:34:48 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:34:51 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:34:51 | INFO     | Searching: TCS Research Fellowship
+2026-03-03T23:34:52 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:34:53 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:34:55 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:34:55 | INFO     | Searching: Wipro Fellowship Program
+2026-03-03T23:34:56 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:34:57 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:34:59 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:34:59 | INFO     | Searching: Accenture Innovation Challenge
+2026-03-03T23:35:00 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:35:02 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:35:03 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:35:04 | INFO     | Searching: Red Hat Internship Program
+2026-03-03T23:35:05 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:35:06 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:35:07 | INFO     | HTTP Request: POST https://google.serper.dev/search "HTTP/1.1 200 OK"
+2026-03-03T23:35:08 | INFO     | Search complete: 464 unique links
+2026-03-03T23:35:08 | INFO     | Domain dedup: 464 -> 260 links
+2026-03-03T23:35:08 | INFO     | MongoDB: 117 URLs already in DB (will skip)
+2026-03-03T23:35:08 | INFO     | Fresh: 223 new links | 37 already in DB (skipped)
+2026-03-03T23:35:08 | INFO     | Step 3: AI filtering 150 links in batches of 25...
+2026-03-03T23:35:08 | INFO     | HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-03T23:35:08 | INFO     | Filter batch 1: kept 9/25
+2026-03-03T23:35:08 | INFO     | HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-03T23:35:08 | INFO     | Filter batch 2: kept 13/25
+2026-03-03T23:35:09 | INFO     | HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-03T23:35:09 | INFO     | Filter batch 3: kept 22/25
+2026-03-03T23:35:09 | INFO     | HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-03T23:35:09 | INFO     | Filter batch 4: kept 23/25
+2026-03-03T23:35:09 | INFO     | HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-03T23:35:09 | INFO     | Filter batch 5: kept 17/25
+2026-03-03T23:35:10 | INFO     | HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-03T23:35:10 | INFO     | Filter batch 6: kept 20/25
+2026-03-03T23:35:10 | INFO     | AI filter complete: 104/150 links kept
+2026-03-03T23:35:10 | INFO     | Step 4: Crawling 104 pages (concurrency=3)...
+2026-03-03T23:35:15 | INFO     | HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-03T23:35:16 | INFO     | HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-03T23:35:16 | INFO     | Saved | NRSC Internship/Student Projects | Check Website | open=True
+2026-03-03T23:35:18 | INFO     | HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-03T23:35:18 | INFO     | Saved | Reliance Foundation Scholarships 2025-2026 | Check Website | open=True
+2026-03-03T23:35:19 | INFO     | Saved | Outreachy Internship | Check Website | open=True
+2026-03-03T23:35:20 | INFO     | HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-03T23:35:21 | INFO     | HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-03-03T23:35:21 | INFO     | Retrying request to /openai/v1/chat/completions in 2.000000 seconds
+2026-03-03T23:35:24 | INFO     | HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-03T23:35:24 | INFO     | Saved | MLH Fellowship | Check Website | open=True
+2026-03-03T23:35:25 | INFO     | Saved | Google AI Residency Program | Check Website | open=False
+2026-03-03T23:35:26 | INFO     | HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-03-03T23:35:26 | INFO     | Retrying request to /openai/v1/chat/completions in 8.000000 seconds
+2026-03-03T23:35:35 | INFO     | HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-03T23:35:36 | INFO     | HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-03-03T23:35:36 | INFO     | Retrying request to /openai/v1/chat/completions in 9.000000 seconds
+2026-03-03T23:35:46 | INFO     | HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-03T23:35:46 | INFO     | Saved | CSIR-CSIO Fellowship/Internship | Check Website | open=True
+2026-03-03T23:35:47 | INFO     | HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-03-03T23:35:47 | INFO     | Retrying request to /openai/v1/chat/completions in 9.000000 seconds
+2026-03-03T23:35:57 | INFO     | HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-03T23:35:57 | INFO     | Saved | Institute Post-Doctoral Fellowships (IPDF) | Check Website | open=True
+2026-03-03T23:35:58 | INFO     | Saved | N. S. Ramaswamy Pre-doctoral Fellowship (NSR Pre-doc) | Check Website | open=True
+2026-03-03T23:35:59 | INFO     | HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-03-03T23:35:59 | INFO     | Retrying request to /openai/v1/chat/completions in 8.000000 seconds
+2026-03-03T23:36:08 | INFO     | HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-03T23:36:09 | INFO     | HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-03-03T23:36:09 | INFO     | Retrying request to /openai/v1/chat/completions in 10.000000 seconds
+2026-03-03T23:36:20 | INFO     | HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-03T23:36:20 | INFO     | Saved | Summer internship Programme | 2026-06-30 | open=True
+2026-03-03T23:36:21 | INFO     | HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-03-03T23:36:21 | WARNING  | Groq rate limited — waiting 5s (attempt 1/4)
+2026-03-03T23:36:26 | INFO     | HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-03-03T23:36:26 | WARNING  | Groq rate limited — waiting 10s (attempt 2/4)
+2026-03-03T23:36:36 | INFO     | HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-03-03T23:36:36 | WARNING  | Groq rate limited — waiting 20s (attempt 3/4)
+2026-03-03T23:36:56 | INFO     | HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-03-03T23:36:56 | INFO     | Retrying request to /openai/v1/chat/completions in 45.000000 seconds
+2026-03-03T23:37:22 | ERROR    | Task was destroyed but it is pending!
+task: <Task cancelling name='Task-1' coro=<main() done, defined at /Users/neeldutta/Documents/Fellowship_Tracker/scraper/main.py:540> wait_for=<Future pending cb=[Task.task_wakeup()]> cb=[gather.<locals>._done_callback() at /opt/homebrew/Caskroom/miniconda/base/lib/python3.13/asyncio/tasks.py:820, ProtocolCallback.__init__.<locals>.cb() at /Users/neeldutta/Documents/Fellowship_Tracker/venv/lib/python3.13/site-packages/playwright/_impl/_connection.py:230]>

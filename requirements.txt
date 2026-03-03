@@ -2,3 +2,6 @@ fastapi
 motor
 dnspython
 python-dotenv
+pydantic
+uvicorn
+httpx

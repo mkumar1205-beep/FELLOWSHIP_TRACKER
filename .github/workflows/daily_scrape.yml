@@ -1,0 +1,32 @@
+name: Daily Scraper
+
+on:
+  schedule:
+    # 20:00 UTC = 1:30 AM IST
+    - cron: '0 20 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install Dependencies
+      run: |
+        pip install -r requirements.txt
+        playwright install chromium
+
+    - name: Run Scraper
+      env:
+        MONGO_URL: ${{ secrets.MONGO_URL }}
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        SERPER_API_KEY: ${{ secrets.SERPER_API_KEY }}
+      run: python scraper/main.py
