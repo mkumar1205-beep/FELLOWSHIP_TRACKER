@@ -10,6 +10,7 @@ import asyncio
 import time
 from pathlib import Path
 from datetime import datetime, timezone
+from urllib.parse import urlparse, urlunparse
 
 import httpx
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -28,6 +29,7 @@ GROQ_KEY    = os.getenv("GROQ_API_KEY")
 mongo_client = AsyncIOMotorClient(MONGO_URL, serverSelectionTimeoutMS=5000)
 db           = mongo_client.fellowship_tracker
 collection   = db.fellowships
+discovered_collection = db.discovered_links
 
 groq_client = Groq(api_key=GROQ_KEY)
 ai_lock = asyncio.Lock()
@@ -63,6 +65,28 @@ BLACKLISTED_DOMAINS = {
     "linkedin.com", "youtube.com", "pinterest.com", "reddit.com",
     "quora.com", "medium.com", "t.co", "bit.ly",
 }
+
+DISCOVERY_QUERIES = [
+    "computer science fellowship 2026 apply",
+    "AI internship for students 2026",
+    "summer research program computer science 2026",
+    "undergraduate research internship India 2026",
+    "open source mentorship program 2026",
+    "engineering fellowship for students 2026",
+    "research internship Bangalore computer science",
+    "remote AI fellowship students",
+]
+
+DISCOVERY_DOMAINS = [
+    "https://iisc.ac.in",
+    "https://iiit.ac.in",
+    "https://research.google",
+    "https://careers.microsoft.com",
+    "https://cncf.io",
+    "https://linuxfoundation.org",
+    "https://mlh.io",
+    "https://outreachy.org",
+]
 
 def ask_ai(prompt: str, max_tokens: int = 2048) -> str:
     """Call Groq with automatic retry on rate limits."""
@@ -130,6 +154,11 @@ def is_link_allowed(url: str) -> bool:
     if u.endswith((".pdf", ".doc", ".docx", ".zip")): return False
     return True
 
+def normalize_url(url: str) -> str:
+    parsed = urlparse(url)
+    clean = parsed._replace(query="", fragment="")
+    return urlunparse(clean).rstrip("/")
+
 def generate_queries_with_ai() -> list[dict]:
     print("\n🤖 Gemini is generating search queries...")
     programs_list = "\n".join(f"- {p}" for p in MUST_HAVE_PROGRAMS)
@@ -149,7 +178,7 @@ Generate 3 queries each for the additional programs too.
 Return ONLY this JSON with no extra text or markdown:
 {{
   "must_have": [
-    {{"name": "Program Name", "queries": ["query 1", "query 2"], "official_domain_hint": "domain.com"}}
+    {{"name": "Program Name", "queries": ["query 1", "query 2", "query 3"], "official_domain_hint": "domain.com"}}
   ],
   "additional": [
     {{"name": "Program Name", "queries": ["query 1", "query 2"], "official_domain_hint": "domain.com"}}
@@ -198,6 +227,7 @@ async def collect_links(programs: list[dict]) -> list[tuple[int, str]]:
             print(f"  🔍 Searching: {prog['name']}")
             for query in prog.get("queries", []):
                 for link in await serper_search(query, http):
+                    link = normalize_url(link)
                     if link not in seen:
                         seen.add(link)
                         score = get_domain_score(link)
@@ -215,7 +245,6 @@ def deduplicate_by_domain(scored_links: list[tuple[int, str]], max_per_domain: i
     Keep only the top N URLs per domain.
     Prevents 5 links from summerofbitcoin.org, 4 from cncf.io etc.
     """
-    from urllib.parse import urlparse
     domain_count = {}
     deduped = []
 
@@ -228,6 +257,43 @@ def deduplicate_by_domain(scored_links: list[tuple[int, str]], max_per_domain: i
 
     print(f"  🧹 Deduplicated: {len(scored_links)} → {len(deduped)} links (max {max_per_domain} per domain)\n")
     return deduped
+
+
+from urllib.parse import urlparse
+
+def generate_domain_paths(domain_url):
+    base = domain_url.rstrip("/")
+    paths = [
+        "/internships",
+        "/fellowships",
+        "/research",
+        "/careers",
+        "/opportunities",
+        "/summer-internship",
+        "/students",
+    ]
+    return [base + p for p in paths]
+
+def generate_dynamic_queries():
+    topics = [
+        "AI", "machine learning", "cybersecurity",
+        "software engineering", "data science",
+        "open source"
+    ]
+
+    templates = [
+        "{} fellowship students 2026",
+        "{} internship undergraduate 2026",
+        "{} research internship apply",
+        "{} student mentorship program"
+    ]
+
+    queries = []
+    for t in topics:
+        for template in templates:
+            queries.append(template.format(t))
+
+    return queries
 
 def ai_relevance_check(links: list[str]) -> list[str]:
     if not links:
@@ -279,29 +345,6 @@ URLs:
     print(f"  ✅ Total kept: {len(kept)} / {len(links)} links.\n")
     return kept
 
-def ai_extract_details(page_text: str, url: str) -> dict:
-    prompt = f"""Extract data from this fellowship webpage.
-
-URL: {url}
-Content: {page_text[:5000]}
-
-Return ONLY this JSON with no markdown:
-{{
-  "name": "Full program name",
-  "organization": "Sponsoring org",
-  "deadline": "YYYY-MM-DD or Check Website or Rolling",
-  "stipend": "Amount or Unpaid or Not Specified",
-  "eligibility": "1-2 sentence summary",
-  "mode": "Remote or In-Person or Hybrid",
-  "is_open": true or false,
-  "tags": ["tag1", "tag2"]
-}}"""
-
-    raw = ask_ai(prompt, max_tokens=800)
-    if not raw:
-        return {}
-    result = safe_parse_json(raw)
-    return result if isinstance(result, dict) else {}
 
 
 async def process_link(crawler, run_cfg, link: str, score: int, semaphore: asyncio.Semaphore):
@@ -315,10 +358,39 @@ async def process_link(crawler, run_cfg, link: str, score: int, semaphore: async
             if score < 80 and result.markdown.count("](") > 80:
                 print(f"  🗑️  Skipping aggregator: {link}")
                 return
+            
+            links = re.findall(r'https?://[^\s)"]+', result.markdown)
 
+            for l in links[:10]:
+
+                l = normalize_url(l)
+
+                if not is_link_allowed(l):
+                    continue
+
+                if get_domain_score(l) < 50:
+                    continue
+
+                await discovered_collection.update_one(
+                    {"apply_link": l},
+                    {"$setOnInsert": {
+                    "name": "Discovered Page",
+                    "apply_link": l,
+                    "trust_score": score - 10,
+                    "last_updated": datetime.now(timezone.utc)
+                }},
+                upsert=True
+                )
             async with ai_lock:
                 details = ai_extract_details(result.markdown, link)
-                await asyncio.sleep(1)
+
+            if not details.get("is_opportunity"):
+                print(f"  ⛔ Skipping non-opportunity page: {link}")
+                return
+
+            details.pop("is_opportunity", None)
+
+            await asyncio.sleep(1)
             if not details:
                 return
 
@@ -349,6 +421,49 @@ async def process_link(crawler, run_cfg, link: str, score: int, semaphore: async
         except Exception as e:
             print(f"  ❌ Error ({link}): {e}")
 
+def ai_extract_details(page_text: str, url: str) -> dict:
+
+    prompt = f"""
+Extract opportunity data from this webpage.
+
+If the page is NOT about a fellowship, internship,
+research program, mentorship, or scholarship,
+return:
+
+{{ "is_opportunity": false }}
+
+Otherwise return:
+
+{{
+  "is_opportunity": true,
+  "name": "Full program name",
+  "organization": "Sponsoring organization",
+  "deadline": "YYYY-MM-DD or Check Website or Rolling",
+  "stipend": "Amount or Unpaid or Not Specified",
+  "eligibility": "1-2 sentence summary",
+  "mode": "Remote or In-Person or Hybrid",
+  "tags": ["tag1", "tag2"]
+}}
+
+URL:
+{url}
+
+Content:
+{page_text[:5000]}
+"""
+
+    raw = ask_ai(prompt, max_tokens=900)
+
+    if not raw:
+        return {}
+
+    result = safe_parse_json(raw)
+
+    if not isinstance(result, dict):
+        return {}
+
+    return result
+
 async def ensure_indexes():
     await collection.create_index("apply_link", unique=True)
     await collection.create_index("last_updated")
@@ -365,6 +480,20 @@ async def main():
     print("=" * 60)
 
     programs     = generate_queries_with_ai()
+
+    for q in DISCOVERY_QUERIES:
+        programs.append({
+        "name": "Discovery",
+        "queries": [q],
+        "official_domain_hint": ""
+    })
+
+    for q in generate_dynamic_queries():
+        programs.append({
+        "name": "DynamicSearch",
+        "queries": [q],
+        "official_domain_hint": ""
+    })
     print("\n📡 Running web searches...\n")
     scored_links = await collect_links(programs)
 
@@ -373,14 +502,18 @@ async def main():
         return
 
     scored_links  = deduplicate_by_domain(scored_links, max_per_domain=2)
+    for domain in DISCOVERY_DOMAINS:
+        for path in generate_domain_paths(domain):
+            scored_links.append((85, normalize_url(path)))
+
+    scored_links = list(set(scored_links))
     existing_urls = await get_existing_urls()
     
-    # Remove already-scraped links before AI filtering
     fresh_links = [(sc, url) for sc, url in scored_links if url not in existing_urls]
     print(f"  🆕 {len(fresh_links)} new links to process ({len(scored_links) - len(fresh_links)} already in DB, skipping)\n")
 
     top_urls   = [url for _, url in fresh_links[:150]]
-    final_urls = ai_relevance_check(top_urls)
+    final_urls = top_urls
     score_map  = {url: sc for sc, url in scored_links}
 
     print(f"\n🚀 Crawling {len(final_urls)} pages...\n")
