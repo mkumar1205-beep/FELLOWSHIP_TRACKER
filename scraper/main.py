@@ -32,7 +32,6 @@ collection   = db.fellowships
 groq_client = Groq(api_key=GROQ_KEY)
 ai_lock = asyncio.Lock()
 
-# ── CONFIRMED WORKING MODEL from your list() output ──────────────
 GROQ_MODEL  = "llama-3.3-70b-versatile"
 
 STUDENT_PROFILE = {
@@ -65,8 +64,6 @@ BLACKLISTED_DOMAINS = {
     "quora.com", "medium.com", "t.co", "bit.ly",
 }
 
-# ─────────────────────────── GEMINI WRAPPER ──────────────────────
-
 def ask_ai(prompt: str, max_tokens: int = 2048) -> str:
     """Call Groq with automatic retry on rate limits."""
     for attempt in range(4):
@@ -81,7 +78,7 @@ def ask_ai(prompt: str, max_tokens: int = 2048) -> str:
         except Exception as e:
             err = str(e)
             if "429" in err or "rate_limit" in err.lower():
-                wait = (2 ** attempt) * 5  # 5, 10, 20, 40s — much shorter than Gemini
+                wait = (2 ** attempt) * 5 
                 print(f"  ⏳ Rate limited. Waiting {wait}s...")
                 time.sleep(wait)
             else:
@@ -133,9 +130,6 @@ def is_link_allowed(url: str) -> bool:
     if u.endswith((".pdf", ".doc", ".docx", ".zip")): return False
     return True
 
-
-# ─────────────────────────── STEP 1: QUERY GENERATION ────────────
-
 def generate_queries_with_ai() -> list[dict]:
     print("\n🤖 Gemini is generating search queries...")
     programs_list = "\n".join(f"- {p}" for p in MUST_HAVE_PROGRAMS)
@@ -177,9 +171,6 @@ Return ONLY this JSON with no extra text or markdown:
     combined = data.get("must_have", []) + data.get("additional", [])
     print(f"  ✅ Generated queries for {len(combined)} programs.")
     return combined
-
-
-# ─────────────────────────── STEP 2: SERPER SEARCH ───────────────
 
 async def serper_search(query: str, client: httpx.AsyncClient) -> list[str]:
     headers = {"X-API-KEY": SERPER_KEY, "Content-Type": "application/json"}
@@ -238,9 +229,6 @@ def deduplicate_by_domain(scored_links: list[tuple[int, str]], max_per_domain: i
     print(f"  🧹 Deduplicated: {len(scored_links)} → {len(deduped)} links (max {max_per_domain} per domain)\n")
     return deduped
 
-
-# ─────────────────────────── STEP 3: AI RELEVANCE FILTER ─────────
-
 def ai_relevance_check(links: list[str]) -> list[str]:
     if not links:
         return []
@@ -290,9 +278,6 @@ URLs:
 
     print(f"  ✅ Total kept: {len(kept)} / {len(links)} links.\n")
     return kept
-
-
-# ─────────────────────────── STEP 4: EXTRACT + STORE ─────────────
 
 def ai_extract_details(page_text: str, url: str) -> dict:
     prompt = f"""Extract data from this fellowship webpage.
@@ -364,8 +349,6 @@ async def process_link(crawler, run_cfg, link: str, score: int, semaphore: async
         except Exception as e:
             print(f"  ❌ Error ({link}): {e}")
 
-
-# ─────────────────────────── MAIN ────────────────────────────────
 async def ensure_indexes():
     await collection.create_index("apply_link", unique=True)
     await collection.create_index("last_updated")
